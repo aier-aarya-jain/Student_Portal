@@ -1,4 +1,4 @@
-```yaml
+
 name: DevSecOps Pipeline
 
 on:
@@ -87,4 +87,3 @@ jobs:
         run: |
           echo "All security gates passed."
           echo "Deploying application..."
-```
