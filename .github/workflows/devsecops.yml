@@ -61,15 +61,33 @@ jobs:
       - name: Verify Docker Image
         run: docker images
 
-      # Gate 4: Container Image Scan
-      - name: Container Image Scan (Trivy)
-        uses: aquasecurity/trivy-action@v0.32.0
-        with:
-          image-ref: secure-portal:latest
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 0
+# Gate 4: Container Image Scan
+
+- name: Install Trivy
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y wget gnupg lsb-release
+
+    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+    sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+
+    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
+    sudo tee /etc/apt/sources.list.d/trivy.list
+
+    sudo apt-get update
+    sudo apt-get install -y trivy
+
+- name: Container Image Scan
+  run: |
+    trivy image --severity HIGH,CRITICAL secure-portal:latest
+
+# Gate 5: Config Scan
+
+- name: Configuration Scan
+  run: |
+    trivy config .
+
+
 
       # Gate 5: Configuration / IaC Scan
       - name: Configuration Scan (Trivy)
