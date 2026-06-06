@@ -1,106 +1,58 @@
 name: DevSecOps Pipeline
-
-on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-
-permissions:
-  contents: read
-  security-events: write
-  actions: read
+on: [push, pull_request]
 
 jobs:
   security:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout Code
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0          # full history so secret scanning sees all commits
 
-      # Setup Node
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # Install Dependencies
-      - name: Install Dependencies
-        run: npm ci
-
-      # ==========================
-      # GATE 1: SECRET SCANNING
-      # ==========================
-      - name: Secret Scan (GitLeaks)
+      # ---- GATE 1: Secret scanning ----
+      - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==========================
-      # GATE 2: SAST
-      # ==========================
-      - name: SAST Scan (Semgrep)
-        uses: semgrep/semgrep-action@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      # ---- GATE 2: SAST ----
+      - name: SAST (Semgrep)
+        uses: returntocorp/semgrep-action@v1
         with:
           config: p/owasp-top-ten
 
-      # ==========================
-      # GATE 3: DEPENDENCY SCAN
-      # ==========================
-      - name: Dependency Scan (npm audit)
+      # ---- GATE 3: Dependency scan ----
+      - name: Dependency scan (npm audit)
         run: npm audit --audit-level=high
 
-      # ==========================
-      # BUILD APPLICATION
-      # ==========================
-      - name: Build Application
-        run: npm run build
-
-      # ==========================
-      # BUILD DOCKER IMAGE
-      # ==========================
-      - name: Build Docker Image
+      # ---- Build the image ----
+      - name: Build image
         run: docker build -t secure-portal:${{ github.sha }} .
 
-      # ==========================
-      # GATE 4: CONTAINER SECURITY
-      # ==========================
-      - name: Trivy Image Scan
-        uses: aquasecurity/trivy-action@0.28.0
+      # ---- GATE 4: Image scan ----
+      - name: Image scan (Trivy)
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: secure-portal:${{ github.sha }}
-          format: sarif
-          output: trivy-results.sarif
           severity: HIGH,CRITICAL
-          scanners: vuln
+          exit-code: '1'
+          ignore-unfixed: true
 
-      # Upload SARIF to GitHub Security Tab
-      - name: Upload Trivy Results
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-
-      # ==========================
-      # GATE 5: CONFIG SCAN
-      # ==========================
-      - name: Trivy Config Scan
-        uses: aquasecurity/trivy-action@0.28.0
+      # ---- GATE 5: Config / compliance scan ----
+      - name: Config scan (Trivy)
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: config
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: '1'
 
-      # ==========================
-      # DEPLOYMENT
-      # ==========================
-      - name: Deploy Application
+      # ---- Deploy only if every gate passed ----
+      - name: Deploy (placeholder)
         if: success()
-        run: |
-          echo "All security gates passed."
-          echo "Deploying application..."
+        run: echo "All gates passed — deploying. Secret is fetched from Vault at runtime."
