@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # full history so secret scanning sees all commits
+          fetch-depth: 0          
 
       # ---- GATE 1: Secret scanning ----
       - name: Secret scan (gitleaks)
