@@ -63,7 +63,7 @@ jobs:
 
       # Gate 4: Container Image Scan
       - name: Container Image Scan (Trivy)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.32.0
         with:
           image-ref: secure-portal:latest
           format: table
@@ -73,7 +73,7 @@ jobs:
 
       # Gate 5: Configuration / IaC Scan
       - name: Configuration Scan (Trivy)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.32.0
         with:
           scan-type: config
           scan-ref: .
