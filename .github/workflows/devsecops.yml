@@ -1,4 +1,4 @@
-
+```yaml
 name: DevSecOps Pipeline
 
 on:
@@ -61,43 +61,30 @@ jobs:
       - name: Verify Docker Image
         run: docker images
 
-# Gate 4: Container Image Scan
+      # Gate 4: Install Trivy
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg lsb-release
 
-- name: Install Trivy
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y wget gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+          sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
 
-    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
-    sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
+          sudo tee /etc/apt/sources.list.d/trivy.list
 
-    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
-    sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
 
-    sudo apt-get update
-    sudo apt-get install -y trivy
+      # Gate 4: Container Image Scan
+      - name: Container Image Scan
+        run: |
+          trivy image --severity HIGH,CRITICAL secure-portal:latest
 
-- name: Container Image Scan
-  run: |
-    trivy image --severity HIGH,CRITICAL secure-portal:latest
-
-# Gate 5: Config Scan
-
-- name: Configuration Scan
-  run: |
-    trivy config .
-
-
-
-      # Gate 5: Configuration / IaC Scan
-      - name: Configuration Scan (Trivy)
-        uses: aquasecurity/trivy-action@v0.32.0
-        with:
-          scan-type: config
-          scan-ref: .
-          format: table
-          severity: HIGH,CRITICAL
-          exit-code: 0
+      # Gate 5: Configuration Scan
+      - name: Configuration Scan
+        run: |
+          trivy config .
 
       # Deployment Stage
       - name: Deploy Application
@@ -105,3 +92,4 @@ jobs:
         run: |
           echo "All security gates passed."
           echo "Deploying application..."
+```
